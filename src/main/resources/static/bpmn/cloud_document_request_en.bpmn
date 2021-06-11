@@ -1,0 +1,170 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:zeebe="http://camunda.org/schema/zeebe/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" xmlns:modeler="http://camunda.org/schema/modeler/1.0" id="Definitions_0yolfv5" targetNamespace="http://bpmn.io/schema/bpmn" exporter="Camunda Modeler" exporterVersion="4.8.1" modeler:executionPlatform="Camunda Cloud" modeler:executionPlatformVersion="1.0.0">
+  <bpmn:collaboration id="document_request">
+    <bpmn:participant id="Participant_0wcg6k4" name="Document Request" processRef="document_request_pool" />
+    <bpmn:textAnnotation id="TextAnnotation_0br7rrz">
+      <bpmn:text>Doesn't yet have the simulation parameters of the original (e.g. "simGeneratePayload")</bpmn:text>
+    </bpmn:textAnnotation>
+    <bpmn:association id="Association_1r59kin" sourceRef="Participant_0wcg6k4" targetRef="TextAnnotation_0br7rrz" />
+  </bpmn:collaboration>
+  <bpmn:process id="document_request_pool" name="Document Request" isExecutable="true">
+    <bpmn:startEvent id="start_event" name="Document Requested">
+      <bpmn:outgoing>Flow_00cfy57</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:serviceTask id="request_document_task" name="Request Document">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="emailService" />
+        <zeebe:taskHeaders>
+          <zeebe:header key="mailBody" value="Dear ${application.applicant.name}.  To process your request we need some additional documents:  ${requestedDocumentDescription}  You can upload the document following this link:    ${uiBaseUrl}documents.html?lang=de&#38;referenceId=${documentReferenceId}  As soon as we receive the document we will continue to process your request.  Kind regards, ${application.corporation}." />
+          <zeebe:header key="mailSubject" value="We need some documents" />
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_00cfy57</bpmn:incoming>
+      <bpmn:outgoing>Flow_132dcjp</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:receiveTask id="wait_for_anser_task" name="Wait for Answer" messageRef="Message_03984ui">
+      <bpmn:incoming>Flow_132dcjp</bpmn:incoming>
+      <bpmn:outgoing>Flow_0oc5yu3</bpmn:outgoing>
+    </bpmn:receiveTask>
+    <bpmn:serviceTask id="Activity_05vcpqc" name="Send Reminder Email">
+      <bpmn:extensionElements>
+        <zeebe:taskDefinition type="emailService" />
+        <zeebe:taskHeaders>
+          <zeebe:header key="mailBody" value="Dear ${application.applicant.name}.  To process your request we need some additional documents:  ${requestedDocumentDescription}  You can upload the document following this link:    ${uiBaseUrl}documents.html?lang=de&#38;referenceId=${documentReferenceId}  As soon as we receive the document we will continue to process your request.  Kind regards, ${application.corporation}." />
+          <zeebe:header key="mailSubject" value="We still need documents" />
+        </zeebe:taskHeaders>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_1fthctx</bpmn:incoming>
+      <bpmn:outgoing>Flow_19byc63</bpmn:outgoing>
+    </bpmn:serviceTask>
+    <bpmn:endEvent id="end_event_reminder_sent" name="Email sent">
+      <bpmn:incoming>Flow_19byc63</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:userTask id="Activity_1e1mhsx" name="Call customer">
+      <bpmn:incoming>Flow_1hkzdbi</bpmn:incoming>
+      <bpmn:outgoing>Flow_0io9t86</bpmn:outgoing>
+    </bpmn:userTask>
+    <bpmn:endEvent id="end_event_answer_received" name="Answer received">
+      <bpmn:incoming>Flow_0io9t86</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:endEvent id="end_event_doc_received" name="Document received">
+      <bpmn:incoming>Flow_0oc5yu3</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:boundaryEvent id="Event_1checoa" name="daily" cancelActivity="false" attachedToRef="wait_for_anser_task">
+      <bpmn:outgoing>Flow_1fthctx</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_18fgfha">
+        <bpmn:timeCycle xsi:type="bpmn:tFormalExpression">R6/P1D</bpmn:timeCycle>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:boundaryEvent id="Event_0aq83e2" name="1 week" attachedToRef="wait_for_anser_task">
+      <bpmn:outgoing>Flow_1hkzdbi</bpmn:outgoing>
+      <bpmn:timerEventDefinition id="TimerEventDefinition_0gl9s3p">
+        <bpmn:timeDuration xsi:type="bpmn:tFormalExpression">P7D</bpmn:timeDuration>
+      </bpmn:timerEventDefinition>
+    </bpmn:boundaryEvent>
+    <bpmn:sequenceFlow id="Flow_00cfy57" sourceRef="start_event" targetRef="request_document_task" />
+    <bpmn:sequenceFlow id="Flow_132dcjp" sourceRef="request_document_task" targetRef="wait_for_anser_task" />
+    <bpmn:sequenceFlow id="Flow_0oc5yu3" sourceRef="wait_for_anser_task" targetRef="end_event_doc_received" />
+    <bpmn:sequenceFlow id="Flow_1fthctx" sourceRef="Event_1checoa" targetRef="Activity_05vcpqc" />
+    <bpmn:sequenceFlow id="Flow_19byc63" sourceRef="Activity_05vcpqc" targetRef="end_event_reminder_sent" />
+    <bpmn:sequenceFlow id="Flow_1hkzdbi" sourceRef="Event_0aq83e2" targetRef="Activity_1e1mhsx" />
+    <bpmn:sequenceFlow id="Flow_0io9t86" sourceRef="Activity_1e1mhsx" targetRef="end_event_answer_received" />
+  </bpmn:process>
+  <bpmn:message id="Message_03984ui" name="MESSAGE_documentReceived">
+    <bpmn:extensionElements>
+      <zeebe:subscription correlationKey="=businessKey" />
+    </bpmn:extensionElements>
+  </bpmn:message>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="document_request">
+      <bpmndi:BPMNShape id="Participant_0wcg6k4_di" bpmnElement="Participant_0wcg6k4" isHorizontal="true">
+        <dc:Bounds x="129" y="230" width="751" height="360" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_00cfy57_di" bpmnElement="Flow_00cfy57">
+        <di:waypoint x="218" y="290" />
+        <di:waypoint x="270" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_132dcjp_di" bpmnElement="Flow_132dcjp">
+        <di:waypoint x="370" y="290" />
+        <di:waypoint x="430" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0oc5yu3_di" bpmnElement="Flow_0oc5yu3">
+        <di:waypoint x="530" y="290" />
+        <di:waypoint x="772" y="290" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1fthctx_di" bpmnElement="Flow_1fthctx">
+        <di:waypoint x="480" y="348" />
+        <di:waypoint x="480" y="530" />
+        <di:waypoint x="570" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_19byc63_di" bpmnElement="Flow_19byc63">
+        <di:waypoint x="670" y="530" />
+        <di:waypoint x="702" y="530" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_1hkzdbi_di" bpmnElement="Flow_1hkzdbi">
+        <di:waypoint x="530" y="348" />
+        <di:waypoint x="530" y="420" />
+        <di:waypoint x="570" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_0io9t86_di" bpmnElement="Flow_0io9t86">
+        <di:waypoint x="670" y="420" />
+        <di:waypoint x="772" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="_BPMNShape_StartEvent_2" bpmnElement="start_event">
+        <dc:Bounds x="182" y="272" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="174" y="315" width="54" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1r41wdu_di" bpmnElement="request_document_task">
+        <dc:Bounds x="270" y="250" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_0dkp6vy_di" bpmnElement="wait_for_anser_task">
+        <dc:Bounds x="430" y="250" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1hbog1o_di" bpmnElement="Activity_05vcpqc">
+        <dc:Bounds x="570" y="490" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_18d2dsk_di" bpmnElement="end_event_reminder_sent">
+        <dc:Bounds x="702" y="512" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="694" y="555" width="52" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Activity_1ic0xse_di" bpmnElement="Activity_1e1mhsx">
+        <dc:Bounds x="570" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_0bt8ank_di" bpmnElement="end_event_answer_received">
+        <dc:Bounds x="772" y="402" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="749" y="445" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_09e06j7_di" bpmnElement="end_event_doc_received">
+        <dc:Bounds x="772" y="272" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="765" y="315" width="51" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1c8wz6f_di" bpmnElement="Event_1checoa">
+        <dc:Bounds x="462" y="312" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="468" y="355" width="24" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Event_1ov5v4k_di" bpmnElement="Event_0aq83e2">
+        <dc:Bounds x="512" y="312" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="558" y="323" width="36" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="TextAnnotation_0br7rrz_di" bpmnElement="TextAnnotation_0br7rrz">
+        <dc:Bounds x="520" y="80" width="100" height="124" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Association_1r59kin_di" bpmnElement="Association_1r59kin">
+        <di:waypoint x="542" y="230" />
+        <di:waypoint x="548" y="204" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
